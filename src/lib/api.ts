@@ -6,16 +6,25 @@ const apiUrl = z
   .parse(import.meta.env.VITE_API_URL)
   .replace(/\/+$/, "");
 
+const errorDetailSchema = z.object({
+  field: z.string().optional(),
+  message: z.string(),
+});
+
 const errorSchema = z.object({
   error: z.object({
     message: z.string(),
+    details: z.array(errorDetailSchema).optional().catch(undefined),
   }),
 });
+
+export type ApiErrorDetail = z.infer<typeof errorDetailSchema>;
 
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly details: ApiErrorDetail[] = [],
   ) {
     super(message);
     this.name = "ApiError";
@@ -71,6 +80,7 @@ export async function apiRequest<T>(
       parsed.success
         ? parsed.data.error.message
         : `Request failed (${response.status}). Please try again.`,
+      parsed.success ? (parsed.data.error.details ?? []) : [],
     );
   }
 

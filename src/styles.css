@@ -1,78 +1,23 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color: #17212b;
-  background: #f5f6f8;
-  line-height: 1.5;
-}
+@import "tailwindcss";
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  :root {
+    font-family: system-ui, sans-serif;
+    color: #17212b;
+    background: #f5f6f8;
+    line-height: 1.5;
+  }
 
-body {
-  margin: 0;
-}
+  button:not(:disabled) {
+    cursor: pointer;
+  }
 
-main {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px;
-}
+  button:disabled {
+    cursor: not-allowed;
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  padding: 8px 14px;
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: wait;
-  opacity: 0.6;
-}
-
-form {
-  max-width: 480px;
-  margin-top: 24px;
-}
-
-fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0;
-}
-
-label {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-input,
-textarea,
-select {
-  width: 100%;
-  padding: 9px;
-  border: 1px solid #aab2bd;
-  border-radius: 4px;
-}
-
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-[role="alert"] {
-  color: #a51d24;
-}
-
-:focus-visible {
-  outline: 3px solid #2563eb;
-  outline-offset: 3px;
+  :focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+  }
 }

@@ -75,28 +75,39 @@ export function AuthForm({ mode, onLogin, onRegistered }: Props) {
   });
 
   return (
-    <form onSubmit={submit} noValidate>
-      <h2>{mode === "login" ? "Log in" : "Create account"}</h2>
+    <form
+      onSubmit={submit}
+      noValidate
+      className="mt-6 max-w-md rounded border border-slate-300 bg-white p-5"
+    >
+      <h2 className="mb-4 text-lg font-semibold text-slate-900">
+        {mode === "login" ? "Log in" : "Create account"}
+      </h2>
 
-      <fieldset disabled={isSubmitting}>
+      <fieldset disabled={isSubmitting} className="space-y-4">
         {mode === "register" && (
-          <label>
+          <label className="grid gap-1.5 text-sm font-medium text-slate-800">
             Name
             <input
               {...register("name")}
               autoComplete="name"
               aria-invalid={Boolean(errors.name)}
               aria-describedby={errors.name ? "name-error" : undefined}
+              className="w-full rounded border border-slate-400 bg-white px-3 py-2 text-sm font-normal text-slate-900"
             />
             {errors.name && (
-              <span id="name-error" role="alert">
+              <span
+                id="name-error"
+                role="alert"
+                className="text-sm font-normal text-red-700"
+              >
                 {errors.name.message}
               </span>
             )}
           </label>
         )}
 
-        <label>
+        <label className="grid gap-1.5 text-sm font-medium text-slate-800">
           Email
           <input
             {...register("email")}
@@ -104,15 +115,20 @@ export function AuthForm({ mode, onLogin, onRegistered }: Props) {
             autoComplete="email"
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "email-error" : undefined}
+            className="w-full rounded border border-slate-400 bg-white px-3 py-2 text-sm font-normal text-slate-900"
           />
           {errors.email && (
-            <span id="email-error" role="alert">
+            <span
+              id="email-error"
+              role="alert"
+              className="text-sm font-normal text-red-700"
+            >
               {errors.email.message}
             </span>
           )}
         </label>
 
-        <label>
+        <label className="grid gap-1.5 text-sm font-medium text-slate-800">
           Password
           <input
             {...register("password")}
@@ -121,19 +137,22 @@ export function AuthForm({ mode, onLogin, onRegistered }: Props) {
               mode === "register" ? "new-password" : "current-password"
             }
             aria-invalid={Boolean(errors.password)}
-            aria-describedby={
-              errors.password ? "password-error" : undefined
-            }
+            aria-describedby={errors.password ? "password-error" : undefined}
+            className="w-full rounded border border-slate-400 bg-white px-3 py-2 text-sm font-normal text-slate-900"
           />
           {errors.password && (
-            <span id="password-error" role="alert">
+            <span
+              id="password-error"
+              role="alert"
+              className="text-sm font-normal text-red-700"
+            >
               {errors.password.message}
             </span>
           )}
         </label>
 
         {mode === "register" && (
-          <label>
+          <label className="grid gap-1.5 text-sm font-medium text-slate-800">
             Interests, separated by commas
             <input
               {...register("interests")}
@@ -142,18 +161,30 @@ export function AuthForm({ mode, onLogin, onRegistered }: Props) {
               aria-describedby={
                 errors.interests ? "interests-error" : undefined
               }
+              className="w-full rounded border border-slate-400 bg-white px-3 py-2 text-sm font-normal text-slate-900"
             />
             {errors.interests && (
-              <span id="interests-error" role="alert">
+              <span
+                id="interests-error"
+                role="alert"
+                className="text-sm font-normal text-red-700"
+              >
                 {errors.interests.message}
               </span>
             )}
           </label>
         )}
 
-        {errors.root && <p role="alert">{errors.root.message}</p>}
+        {errors.root && (
+          <p role="alert" className="text-sm text-red-700">
+            {errors.root.message}
+          </p>
+        )}
 
-        <button type="submit">
+        <button
+          type="submit"
+          className="rounded border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        >
           {isSubmitting
             ? "Please wait..."
             : mode === "login"
