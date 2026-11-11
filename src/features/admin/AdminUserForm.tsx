@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ApiError } from "../../lib/api";
+import { applyApiFormErrors } from "../../lib/formErrors";
 import { parseInterests, type User } from "../auth/auth.schema";
 import {
   createAdminUserFormSchema,
@@ -72,36 +72,6 @@ export function AdminUserForm(props: Props) {
     }
   }, [autoFocusName]);
 
-  function applyServerError(error: unknown) {
-    if (error instanceof ApiError && error.details.length > 0) {
-      let mappedCount = 0;
-
-      for (const detail of error.details) {
-        if (
-          detail.field === "name" ||
-          detail.field === "email" ||
-          detail.field === "interests" ||
-          (props.mode === "create" && detail.field === "password")
-        ) {
-          setError(detail.field, {
-            type: "server",
-            message: detail.message,
-          });
-          mappedCount += 1;
-        }
-      }
-
-      if (mappedCount === error.details.length) {
-        return;
-      }
-    }
-
-    setError("root", {
-      type: "server",
-      message: error instanceof Error ? error.message : "Request failed.",
-    });
-  }
-
   const submit = handleSubmit(async (values) => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -126,7 +96,13 @@ export function AdminUserForm(props: Props) {
         });
       }
     } catch (error: unknown) {
-      applyServerError(error);
+      const allowedFields: ReadonlyArray<
+        "name" | "email" | "password" | "interests"
+      > =
+        props.mode === "create"
+          ? ["name", "email", "password", "interests"]
+          : ["name", "email", "interests"];
+      applyApiFormErrors(error, allowedFields, setError);
     } finally {
       submittingRef.current = false;
     }

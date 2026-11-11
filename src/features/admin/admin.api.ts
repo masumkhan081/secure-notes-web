@@ -3,9 +3,13 @@ import { apiRequest } from "../../lib/api";
 import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import { userResponseSchema, type User } from "../auth/auth.schema";
 import {
+  adminInterestUsersPageSchema,
+  adminInterestsPageSchema,
   adminNoteResponseSchema,
   adminNotesPageSchema,
   adminUsersPageSchema,
+  type AdminInterestUsersPage,
+  type AdminInterestsPage,
   type AdminNote,
   type AdminNotesPage,
   type AdminUsersPage,
@@ -114,4 +118,37 @@ export async function getAdminNote(
     { token, signal },
   );
   return response.note;
+}
+
+export function listAdminInterests(
+  token: string,
+  cursor: string | null,
+  signal?: AbortSignal,
+): Promise<AdminInterestsPage> {
+  return apiRequest(
+    `/api/admin/interests?${buildPageParams(cursor)}`,
+    adminInterestsPageSchema,
+    { token, signal },
+  );
+}
+
+export function listAdminInterestUsers(
+  token: string,
+  interest: string,
+  cursor: string | null,
+  signal?: AbortSignal,
+): Promise<AdminInterestUsersPage> {
+  const params = new URLSearchParams({
+    interest,
+    limit: String(DEFAULT_PAGE_SIZE),
+  });
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+
+  return apiRequest(
+    `/api/admin/interests/users?${params.toString()}`,
+    adminInterestUsersPageSchema,
+    { token, signal },
+  );
 }

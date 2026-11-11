@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
+import { AdminInterestsPage } from "./features/admin/AdminInterestsPage";
 import { AdminNotesPage } from "./features/admin/AdminNotesPage";
 import { AdminUsersPage } from "./features/admin/AdminUsersPage";
 import { AuthForm } from "./features/auth/AuthForm";
 import type { LoginResponse, User } from "./features/auth/auth.schema";
 import { NotesPage } from "./features/notes/NotesPage";
+import { PostsPage } from "./features/posts/PostsPage";
 
 type Session = LoginResponse & {
   expiresAt: number;
 };
 
-type AuthenticatedTab = "my-notes" | "admin-users" | "admin-notes";
+type UnauthenticatedView = "login" | "register" | "posts";
+type AuthenticatedTab =
+  | "my-notes"
+  | "public-posts"
+  | "admin-users"
+  | "admin-notes"
+  | "admin-interests";
 
 function navButtonClass(active: boolean): string {
   return `rounded border px-4 py-2 text-sm font-medium ${
@@ -20,7 +28,7 @@ function navButtonClass(active: boolean): string {
 }
 
 export default function App() {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [publicView, setPublicView] = useState<UnauthenticatedView>("login");
   const [session, setSession] = useState<Session | null>(null);
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>("my-notes");
   const [notice, setNotice] = useState("");
@@ -28,13 +36,13 @@ export default function App() {
   const accessToken = session?.accessToken;
   const expiresAt = session?.expiresAt;
 
-  // Tie expiry strictly to the login token and deadline so profile refreshes never extend the window.
+  // Tie expiry strictly to the login token and deadline so profile or tab changes never extend the window.
   useEffect(() => {
     if (!accessToken || expiresAt === undefined) return;
 
     function expireSession() {
       setSession(null);
-      setMode("login");
+      setPublicView("login");
       setActiveTab("my-notes");
       setNotice("Your session expired. Please log in again.");
     }
@@ -59,7 +67,12 @@ export default function App() {
   }
 
   const isAdmin = session?.user.role === "ADMIN";
-  const visibleTab: AuthenticatedTab = isAdmin ? activeTab : "my-notes";
+  const adminOnlyTab =
+    activeTab === "admin-users" ||
+    activeTab === "admin-notes" ||
+    activeTab === "admin-interests";
+  const visibleTab: AuthenticatedTab =
+    !isAdmin && adminOnlyTab ? "my-notes" : activeTab;
 
   return (
     <main className="mx-auto max-w-4xl p-6">
@@ -88,7 +101,7 @@ export default function App() {
               type="button"
               onClick={() => {
                 setSession(null);
-                setMode("login");
+                setPublicView("login");
                 setActiveTab("my-notes");
                 setNotice("You have logged out.");
               }}
@@ -106,6 +119,15 @@ export default function App() {
               className={navButtonClass(visibleTab === "my-notes")}
             >
               My notes
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={visibleTab === "public-posts"}
+              onClick={() => setActiveTab("public-posts")}
+              className={navButtonClass(visibleTab === "public-posts")}
+            >
+              Public posts
             </button>
 
             {isAdmin && (
@@ -127,12 +149,25 @@ export default function App() {
                 >
                   All notes
                 </button>
+
+                <button
+                  type="button"
+                  aria-pressed={visibleTab === "admin-interests"}
+                  onClick={() => setActiveTab("admin-interests")}
+                  className={navButtonClass(visibleTab === "admin-interests")}
+                >
+                  Interests
+                </button>
               </>
             )}
           </nav>
 
           {visibleTab === "my-notes" && (
             <NotesPage key={session.user.id} token={session.accessToken} />
+          )}
+
+          {visibleTab === "public-posts" && (
+            <PostsPage key={session.user.id} token={session.accessToken} />
           )}
 
           {visibleTab === "admin-users" && isAdmin && (
@@ -147,51 +182,82 @@ export default function App() {
           {visibleTab === "admin-notes" && isAdmin && (
             <AdminNotesPage key={session.user.id} token={session.accessToken} />
           )}
+
+          {visibleTab === "admin-interests" && isAdmin && (
+            <AdminInterestsPage
+              key={session.user.id}
+              token={session.accessToken}
+            />
+          )}
         </>
       ) : (
         <>
-          <nav aria-label="Account access" className="mt-4 flex flex-wrap gap-2">
+          <nav
+            aria-label="Account access and public posts"
+            className="mt-4 flex flex-wrap gap-2"
+          >
             <button
               type="button"
-              aria-pressed={mode === "login"}
+              aria-pressed={publicView === "login"}
               onClick={() => {
-                setMode("login");
+                setPublicView("login");
                 setNotice("");
               }}
-              className={navButtonClass(mode === "login")}
+              className={navButtonClass(publicView === "login")}
             >
               Log in
             </button>
 
             <button
               type="button"
-              aria-pressed={mode === "register"}
+              aria-pressed={publicView === "register"}
               onClick={() => {
-                setMode("register");
+                setPublicView("register");
                 setNotice("");
               }}
-              className={navButtonClass(mode === "register")}
+              className={navButtonClass(publicView === "register")}
             >
               Create account
             </button>
+
+            <button
+              type="button"
+              aria-pressed={publicView === "posts"}
+              onClick={() => {
+                setPublicView("posts");
+                setNotice("");
+              }}
+              className={navButtonClass(publicView === "posts")}
+            >
+              Public posts
+            </button>
           </nav>
 
-          <AuthForm
-            key={mode}
-            mode={mode}
-            onLogin={(value) => {
-              setSession({
-                ...value,
-                expiresAt: Date.now() + value.expiresIn * 1000,
-              });
-              setActiveTab("my-notes");
-              setNotice("");
-            }}
-            onRegistered={() => {
-              setMode("login");
-              setNotice("Account created. You can now log in.");
-            }}
-          />
+          {publicView === "posts" ? (
+            <PostsPage
+              onRequestLogin={() => {
+                setPublicView("login");
+                setNotice("");
+              }}
+            />
+          ) : (
+            <AuthForm
+              key={publicView}
+              mode={publicView}
+              onLogin={(value) => {
+                setSession({
+                  ...value,
+                  expiresAt: Date.now() + value.expiresIn * 1000,
+                });
+                setActiveTab("my-notes");
+                setNotice("");
+              }}
+              onRegistered={() => {
+                setPublicView("login");
+                setNotice("Account created. You can now log in.");
+              }}
+            />
+          )}
         </>
       )}
     </main>

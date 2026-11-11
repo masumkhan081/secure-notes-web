@@ -21,9 +21,30 @@ export const adminNotesPageSchema = z.object({
   pageInfo: pageInfoSchema,
 });
 
+export const adminInterestGroupSchema = z.object({
+  interest: z.string(),
+  userCount: z.number().int().nonnegative(),
+});
+
+export const adminInterestsPageSchema = z.object({
+  items: z.array(adminInterestGroupSchema),
+  pageInfo: pageInfoSchema,
+});
+
+export const adminInterestUsersPageSchema = z.object({
+  interest: z.string(),
+  items: z.array(userSchema),
+  pageInfo: pageInfoSchema,
+});
+
 export type AdminUsersPage = z.infer<typeof adminUsersPageSchema>;
 export type AdminNote = z.infer<typeof adminNoteSchema>;
 export type AdminNotesPage = z.infer<typeof adminNotesPageSchema>;
+export type AdminInterestGroup = z.infer<typeof adminInterestGroupSchema>;
+export type AdminInterestsPage = z.infer<typeof adminInterestsPageSchema>;
+export type AdminInterestUsersPage = z.infer<
+  typeof adminInterestUsersPageSchema
+>;
 
 export type CreateAdminUserPayload = {
   name: string;
