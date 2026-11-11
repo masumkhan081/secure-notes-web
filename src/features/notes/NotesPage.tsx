@@ -1,5 +1,18 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { PaginationControls } from "../../components/PaginationControls";
+import {
+  INITIAL_PAGE_QUERY,
+  canGoPrevious,
+  getCurrentCursor,
+  popPreviousCursor,
+  pushNextCursor,
+  resetToFirstPage,
+  retryCurrentPage,
+  type CursorPageQuery,
+  type PageInfo,
+} from "../../lib/pagination";
 import { formatNoteDate } from "./formatDate";
+import { formatContentPreview } from "./formatNotePreview";
 import { NoteDetail } from "./NoteDetail";
 import { NoteForm } from "./NoteForm";
 import {
@@ -9,15 +22,10 @@ import {
   listNotes,
   updateNote,
 } from "./notes.api";
-import type { Note, NoteFormValues, NotesPage } from "./notes.schema";
+import type { Note, NoteFormValues } from "./notes.schema";
 
 type Props = {
   token: string;
-};
-
-type ListQuery = {
-  cursorHistory: Array<string | null>;
-  revision: number;
 };
 
 type ViewTarget = {
@@ -25,23 +33,12 @@ type ViewTarget = {
   revision: number;
 };
 
-const CONTENT_PREVIEW_MAX = 240;
-
-function formatContentPreview(content: string): string {
-  if (content.length <= CONTENT_PREVIEW_MAX) {
-    return content;
-  }
-  return `${content.slice(0, CONTENT_PREVIEW_MAX)}...`;
-}
-
 export function NotesPage({ token }: Props) {
   const headingId = useId();
-  const [listQuery, setListQuery] = useState<ListQuery>({
-    cursorHistory: [null],
-    revision: 0,
-  });
+  const [listQuery, setListQuery] =
+    useState<CursorPageQuery>(INITIAL_PAGE_QUERY);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [pageInfo, setPageInfo] = useState<NotesPage["pageInfo"] | null>(null);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [listError, setListError] = useState("");
 
@@ -57,8 +54,7 @@ export function NotesPage({ token }: Props) {
   const [statusMessage, setStatusMessage] = useState("");
   const [actionError, setActionError] = useState("");
 
-  const currentCursor =
-    listQuery.cursorHistory[listQuery.cursorHistory.length - 1] ?? null;
+  const currentCursor = getCurrentCursor(listQuery);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,10 +133,7 @@ export function NotesPage({ token }: Props) {
   }, [token, viewTarget]);
 
   function refreshPageOne() {
-    setListQuery((prev) => ({
-      cursorHistory: [null],
-      revision: prev.revision + 1,
-    }));
+    setListQuery(resetToFirstPage);
   }
 
   async function handleCreate(values: NoteFormValues) {
@@ -195,7 +188,7 @@ export function NotesPage({ token }: Props) {
     }
   }
 
-  const canGoPrevious = listQuery.cursorHistory.length > 1;
+  const hasPrevious = canGoPrevious(listQuery);
   const canGoNext =
     !isLoadingList &&
     !listError &&
@@ -277,12 +270,7 @@ export function NotesPage({ token }: Props) {
             <p>{listError}</p>
             <button
               type="button"
-              onClick={() =>
-                setListQuery((prev) => ({
-                  ...prev,
-                  revision: prev.revision + 1,
-                }))
-              }
+              onClick={() => setListQuery(retryCurrentPage)}
               className="rounded border border-red-400 bg-white px-3 py-1.5 font-medium text-red-800 hover:bg-red-100"
             >
               Retry
@@ -370,44 +358,17 @@ export function NotesPage({ token }: Props) {
           </ul>
         )}
 
-        <nav
-          aria-label="Notes pagination"
-          className="flex items-center justify-between gap-3 pt-1"
-        >
-          <button
-            type="button"
-            disabled={!canGoPrevious}
-            onClick={() =>
-              setListQuery((prev) =>
-                prev.cursorHistory.length > 1
-                  ? {
-                      ...prev,
-                      cursorHistory: prev.cursorHistory.slice(0, -1),
-                    }
-                  : prev,
-              )
-            }
-            className="rounded border border-slate-400 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50"
-          >
-            Previous
-          </button>
-
-          <button
-            type="button"
-            disabled={!canGoNext}
-            onClick={() => {
-              const nextCursor = pageInfo?.nextCursor;
-              if (!nextCursor) return;
-              setListQuery((prev) => ({
-                ...prev,
-                cursorHistory: [...prev.cursorHistory, nextCursor],
-              }));
-            }}
-            className="rounded border border-slate-400 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50"
-          >
-            Next
-          </button>
-        </nav>
+        <PaginationControls
+          ariaLabel="Notes pagination"
+          canGoPrevious={hasPrevious}
+          canGoNext={canGoNext}
+          onPrevious={() => setListQuery(popPreviousCursor)}
+          onNext={() => {
+            const nextCursor = pageInfo?.nextCursor;
+            if (!nextCursor) return;
+            setListQuery((prev) => pushNextCursor(prev, nextCursor));
+          }}
+        />
       </section>
     </section>
   );

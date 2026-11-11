@@ -2,8 +2,12 @@ import { useEffect, useId, useRef } from "react";
 import { formatNoteDate } from "./formatDate";
 import type { Note } from "./notes.schema";
 
+type DetailNote = Note & {
+  ownerId?: string;
+};
+
 type Props = {
-  note: Note | null;
+  note: DetailNote | null;
   isLoading: boolean;
   error: string;
   focusKey: string;
@@ -61,6 +65,9 @@ export function NoteDetail({
           <h4 className="break-words text-lg font-semibold text-slate-900">
             {note.title}
           </h4>
+          {note.ownerId && (
+            <p className="text-xs text-slate-600">Owner ID: {note.ownerId}</p>
+          )}
           <p className="text-xs text-slate-600">
             Created: {formatNoteDate(note.createdAt)} · Updated:{" "}
             {formatNoteDate(note.updatedAt)}

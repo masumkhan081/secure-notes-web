@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiRequest } from "../../lib/api";
+import { DEFAULT_PAGE_SIZE } from "../../lib/pagination";
 import {
   noteResponseSchema,
   notesPageSchema,
@@ -8,7 +9,7 @@ import {
   type NotesPage,
 } from "./notes.schema";
 
-export const NOTES_PAGE_SIZE = 10;
+export const NOTES_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export function listNotes(
   token: string,

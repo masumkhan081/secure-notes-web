@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pageInfoSchema } from "../../lib/pagination";
 
 export const noteSchema = z.object({
   id: z.string(),
@@ -14,10 +15,7 @@ export const noteResponseSchema = z.object({
 
 export const notesPageSchema = z.object({
   items: z.array(noteSchema),
-  pageInfo: z.object({
-    hasMore: z.boolean(),
-    nextCursor: z.string().nullable(),
-  }),
+  pageInfo: pageInfoSchema,
 });
 
 export const noteFormSchema = z.object({

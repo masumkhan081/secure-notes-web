@@ -1,26 +1,46 @@
 import { useEffect, useState } from "react";
+import { AdminNotesPage } from "./features/admin/AdminNotesPage";
+import { AdminUsersPage } from "./features/admin/AdminUsersPage";
 import { AuthForm } from "./features/auth/AuthForm";
-import type { LoginResponse } from "./features/auth/auth.schema";
+import type { LoginResponse, User } from "./features/auth/auth.schema";
 import { NotesPage } from "./features/notes/NotesPage";
+
+type Session = LoginResponse & {
+  expiresAt: number;
+};
+
+type AuthenticatedTab = "my-notes" | "admin-users" | "admin-notes";
+
+function navButtonClass(active: boolean): string {
+  return `rounded border px-4 py-2 text-sm font-medium ${
+    active
+      ? "border-slate-900 bg-slate-900 text-white"
+      : "border-slate-400 bg-white text-slate-800 hover:bg-slate-100"
+  }`;
+}
 
 export default function App() {
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [session, setSession] = useState<LoginResponse | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [activeTab, setActiveTab] = useState<AuthenticatedTab>("my-notes");
   const [notice, setNotice] = useState("");
 
+  const accessToken = session?.accessToken;
+  const expiresAt = session?.expiresAt;
+
+  // Tie expiry strictly to the login token and deadline so profile refreshes never extend the window.
   useEffect(() => {
-    if (!session) return;
+    if (!accessToken || expiresAt === undefined) return;
 
     function expireSession() {
       setSession(null);
       setMode("login");
+      setActiveTab("my-notes");
       setNotice("Your session expired. Please log in again.");
     }
 
-    const timer = window.setTimeout(
-      expireSession,
-      session.expiresIn * 1000,
-    );
+    const remainingMs = Math.max(0, expiresAt - Date.now());
+    const timer = window.setTimeout(expireSession, remainingMs);
 
     window.addEventListener("auth-expired", expireSession);
 
@@ -28,7 +48,18 @@ export default function App() {
       window.clearTimeout(timer);
       window.removeEventListener("auth-expired", expireSession);
     };
-  }, [session]);
+  }, [accessToken, expiresAt]);
+
+  function handleCurrentUserUpdated(updatedUser: User) {
+    setSession((prev) =>
+      prev && prev.user.id === updatedUser.id
+        ? { ...prev, user: updatedUser }
+        : prev,
+    );
+  }
+
+  const isAdmin = session?.user.role === "ADMIN";
+  const visibleTab: AuthenticatedTab = isAdmin ? activeTab : "my-notes";
 
   return (
     <main className="mx-auto max-w-4xl p-6">
@@ -58,6 +89,7 @@ export default function App() {
               onClick={() => {
                 setSession(null);
                 setMode("login");
+                setActiveTab("my-notes");
                 setNotice("You have logged out.");
               }}
               className="rounded border border-slate-400 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100"
@@ -66,7 +98,55 @@ export default function App() {
             </button>
           </section>
 
-          <NotesPage key={session.user.id} token={session.accessToken} />
+          <nav aria-label="Workspace" className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              aria-pressed={visibleTab === "my-notes"}
+              onClick={() => setActiveTab("my-notes")}
+              className={navButtonClass(visibleTab === "my-notes")}
+            >
+              My notes
+            </button>
+
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  aria-pressed={visibleTab === "admin-users"}
+                  onClick={() => setActiveTab("admin-users")}
+                  className={navButtonClass(visibleTab === "admin-users")}
+                >
+                  Users
+                </button>
+
+                <button
+                  type="button"
+                  aria-pressed={visibleTab === "admin-notes"}
+                  onClick={() => setActiveTab("admin-notes")}
+                  className={navButtonClass(visibleTab === "admin-notes")}
+                >
+                  All notes
+                </button>
+              </>
+            )}
+          </nav>
+
+          {visibleTab === "my-notes" && (
+            <NotesPage key={session.user.id} token={session.accessToken} />
+          )}
+
+          {visibleTab === "admin-users" && isAdmin && (
+            <AdminUsersPage
+              key={session.user.id}
+              token={session.accessToken}
+              currentUserId={session.user.id}
+              onCurrentUserUpdated={handleCurrentUserUpdated}
+            />
+          )}
+
+          {visibleTab === "admin-notes" && isAdmin && (
+            <AdminNotesPage key={session.user.id} token={session.accessToken} />
+          )}
         </>
       ) : (
         <>
@@ -78,11 +158,7 @@ export default function App() {
                 setMode("login");
                 setNotice("");
               }}
-              className={`rounded border px-4 py-2 text-sm font-medium ${
-                mode === "login"
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-400 bg-white text-slate-800 hover:bg-slate-100"
-              }`}
+              className={navButtonClass(mode === "login")}
             >
               Log in
             </button>
@@ -94,11 +170,7 @@ export default function App() {
                 setMode("register");
                 setNotice("");
               }}
-              className={`rounded border px-4 py-2 text-sm font-medium ${
-                mode === "register"
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-400 bg-white text-slate-800 hover:bg-slate-100"
-              }`}
+              className={navButtonClass(mode === "register")}
             >
               Create account
             </button>
@@ -108,7 +180,11 @@ export default function App() {
             key={mode}
             mode={mode}
             onLogin={(value) => {
-              setSession(value);
+              setSession({
+                ...value,
+                expiresAt: Date.now() + value.expiresIn * 1000,
+              });
+              setActiveTab("my-notes");
               setNotice("");
             }}
             onRegistered={() => {
