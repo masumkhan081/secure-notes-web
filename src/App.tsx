@@ -1,57 +1,96 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AuthForm } from "./features/auth/AuthForm";
+import type { LoginResponse } from "./features/auth/auth.schema";
 
 export default function App() {
-  const [status, setStatus] = useState("Not checked");
-  const [pending, setPending] = useState(false);
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [session, setSession] = useState<LoginResponse | null>(null);
+  const [notice, setNotice] = useState("");
 
-  async function checkConnection() {
-    setPending(true);
-    setStatus("Connecting...");
+  useEffect(() => {
+    if (!session) return;
 
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL;
-
-      if (!apiUrl) {
-        throw new Error("VITE_API_URL is missing");
-      }
-
-      const response = await fetch(`${apiUrl}/api/health`);
-      const data: unknown = await response.json();
-
-      if (
-        !response.ok ||
-        typeof data !== "object" ||
-        data === null ||
-        !("status" in data) ||
-        data.status !== "ok"
-      ) {
-        throw new Error("The API did not return a healthy response");
-      }
-
-      setStatus("Connected to the backend successfully.");
-    } catch (error: unknown) {
-      setStatus(
-        error instanceof Error ? error.message : "Connection failed",
-      );
-    } finally {
-      setPending(false);
+    function expireSession() {
+      setSession(null);
+      setMode("login");
+      setNotice("Your session expired. Please log in again.");
     }
-  }
+
+    const timer = window.setTimeout(
+      expireSession,
+      session.expiresIn * 1000,
+    );
+
+    window.addEventListener("auth-expired", expireSession);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("auth-expired", expireSession);
+    };
+  }, [session]);
 
   return (
     <main>
       <h1>Secure Notes</h1>
-      <p>Private notes and public posts.</p>
 
-      <button
-        type="button"
-        onClick={checkConnection}
-        disabled={pending}
-      >
-        {pending ? "Connecting..." : "Check API connection"}
-      </button>
+      {notice && <p role="status">{notice}</p>}
 
-      <p role="status">{status}</p>
+      {session ? (
+        <section>
+          <h2>Welcome, {session.user.name}</h2>
+          <p>Role: {session.user.role}</p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSession(null);
+              setMode("login");
+              setNotice("You have logged out.");
+            }}
+          >
+            Log out
+          </button>
+        </section>
+      ) : (
+        <>
+          <nav aria-label="Account access">
+            <button
+              type="button"
+              aria-pressed={mode === "login"}
+              onClick={() => {
+                setMode("login");
+                setNotice("");
+              }}
+            >
+              Log in
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={mode === "register"}
+              onClick={() => {
+                setMode("register");
+                setNotice("");
+              }}
+            >
+              Create account
+            </button>
+          </nav>
+
+          <AuthForm
+            key={mode}
+            mode={mode}
+            onLogin={(value) => {
+              setSession(value);
+              setNotice("");
+            }}
+            onRegistered={() => {
+              setMode("login");
+              setNotice("Account created. You can now log in.");
+            }}
+          />
+        </>
+      )}
     </main>
   );
 }
